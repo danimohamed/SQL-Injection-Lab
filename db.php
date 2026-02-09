@@ -8,16 +8,14 @@
 define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'sql_injection_lab');
 define('DB_USER', 'root');
-define('DB_PASS', '');              // Change this to your MySQL root password
+define('DB_PASS', 'danidani2002@');              // Change this to your MySQL root password
 
 /**
- * Returns a PDO connection to the sql_injection_lab database.
+ * Returns a raw PDO connection used by VULNERABLE pages.
  *
- * IMPORTANT SECURITY NOTE:
- * - ATTR_EMULATE_PREPARES is set to false so that PDO uses real
- *   MySQL prepared statements rather than emulating them in PHP.
- *   This is critical for the secure login demo.
- * - ATTR_ERRMODE is set to EXCEPTION so errors surface clearly.
+ * EMULATE_PREPARES = true  so that query() sends the SQL string
+ * exactly as-is to MySQL, without any driver-level escaping.
+ * This is what makes the injections possible.
  */
 function getDB(): PDO
 {
@@ -29,7 +27,31 @@ function getDB(): PDO
         $pdo = new PDO($dsn, DB_USER, DB_PASS, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            // Use REAL prepared statements, not emulated ones
+            PDO::ATTR_EMULATE_PREPARES   => true,
+        ]);
+    }
+
+    return $pdo;
+}
+
+/**
+ * Returns a secure PDO connection used by the SECURE login page.
+ *
+ * EMULATE_PREPARES = false  so that PDO uses real MySQL server-side
+ * prepared statements. Combined with bound parameters, this makes
+ * SQL injection impossible - the query structure and the data are
+ * sent to MySQL in two separate steps.
+ */
+function getSecureDB(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo === null) {
+        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
     }

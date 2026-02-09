@@ -46,9 +46,10 @@ if (isset($_POST['update'])) {
     $query = "UPDATE users SET password='$new_password' WHERE username='$username'";
 
     try {
-        $pdo = getDB();
-        $pdo->exec($query);
-        $message = 'Update executed successfully.';
+        $pdo  = getDB();
+        $stmt = $pdo->query($query);
+        $count = $stmt->rowCount();
+        $message = "Update executed successfully. $count row(s) affected.";
     } catch (PDOException $e) {
         $error = $e->getMessage();
     }
@@ -112,12 +113,13 @@ try {
     <!-- Explanation -->
     <div class="info-box">
         <strong>Scenario:</strong> A "Change Password" form. The UPDATE query concatenates user input.<br><br>
-        <strong>Payload (paste into "New Password"):</strong>
-        <code>hacked', role='admin' WHERE username='user1' -- </code>
+        <strong>Step 1:</strong> Type <strong>user1</strong> in the Username field.<br>
+        <strong>Step 2:</strong> Paste this into "New Password":
+        <code>hacked', role='admin</code>
         <strong>What happens:</strong><br>
         The query becomes:<br>
-        <code>UPDATE users SET password='hacked', role='admin' WHERE username='user1' -- ' WHERE username='...'</code>
-        user1's role is changed from "user" to "admin" &mdash; privilege escalation.
+        <code>UPDATE users SET password='hacked', role='admin' WHERE username='user1'</code>
+        user1's role changes from "user" to "admin" &mdash; privilege escalation.
     </div>
 
     <!-- Form -->
@@ -126,7 +128,7 @@ try {
         <input type="text" id="username" name="username" placeholder="e.g. user1" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
 
         <label for="new_password">New Password</label>
-        <input type="text" id="new_password" name="new_password" placeholder="e.g. hacked', role='admin' WHERE username='user1' -- " value="<?= htmlspecialchars($_POST['new_password'] ?? '') ?>">
+        <input type="text" id="new_password" name="new_password" placeholder="e.g. hacked', role='admin" value="<?= htmlspecialchars($_POST['new_password'] ?? '') ?>">
 
         <div class="btn-row">
             <button type="submit" name="update" value="1">Update Password</button>

@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     try {
-        $pdo = getDB();
+        $pdo = getSecureDB();
 
         // =====================================================
         // SECURE: Prepared statement with bound parameters.

