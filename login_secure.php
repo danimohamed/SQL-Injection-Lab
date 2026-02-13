@@ -24,6 +24,8 @@
 // ============================================================
 
 require_once 'db.php';
+require_once 'lang_switcher.php';
+$_SESSION['visited_labs'][] = 'login_secure'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
 
 $result  = null;
 $error   = null;
@@ -53,8 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Login - SQL Injection Lab</title>
+    <title><?= t('secure_login_page') ?></title>
     <style>
+        <?= langSwitcherCSS() ?>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
         .container { max-width: 700px; margin: 0 auto; padding: 40px 20px; }
@@ -91,58 +94,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+<?= langSwitcherHTML() ?>
 <div class="container">
-    <a class="back" href="index.php">&larr; Back to Menu</a>
-    <h1>Secure Login</h1>
-    <span class="tag">Secure</span>
+    <a class="back" href="index.php"><?= t('back_to_menu') ?></a>
+    <h1><?= t('secure_login_title') ?></h1>
+    <span class="tag"><?= t('secure') ?></span>
 
     <!-- Explanation -->
     <div class="info-box">
-        <strong>How prepared statements prevent SQL injection:</strong><br><br>
-        1. The SQL query template is sent to MySQL with <code>?</code> placeholders.<br>
-        2. MySQL compiles the query <em>before</em> seeing any user data.<br>
-        3. User values are sent separately and treated as <strong>literal data</strong>, never as SQL code.<br><br>
-        <strong>Try the same payloads from the vulnerable page:</strong><br>
-        <code>admin' -- </code> &rarr; will fail (treated as a literal username string).<br>
-        <code>' OR '1'='1</code> &rarr; will fail (no matching user with that exact name).
+        <?= t('secure_login_howto') ?>
     </div>
 
     <!-- Side-by-side code comparison -->
     <div class="comparison">
         <div class="vuln-code">
-            <h4>Vulnerable (string concat)</h4>
+            <h4><?= t('vuln_code_title') ?></h4>
             <code style="color:#ff8a80;">$sql = "SELECT * FROM users<br>  WHERE username='$username'<br>  AND password='$password'";<br>$pdo->query($sql);</code>
         </div>
         <div class="safe-code">
-            <h4>Secure (prepared statement)</h4>
+            <h4><?= t('safe_code_title') ?></h4>
             <code style="color:#69f0ae;">$stmt = $pdo->prepare(<br>  "SELECT * FROM users<br>  WHERE username = ?<br>  AND password = ?");<br>$stmt->execute([$user, $pass]);</code>
         </div>
     </div>
 
     <!-- Login Form -->
     <form method="POST">
-        <label for="username">Username</label>
+        <label for="username"><?= t('username') ?></label>
         <input type="text" id="username" name="username" placeholder="Try: admin' -- " value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
 
-        <label for="password">Password</label>
+        <label for="password"><?= t('password') ?></label>
         <input type="text" id="password" name="password" placeholder="Try: ' OR '1'='1" value="<?= htmlspecialchars($_POST['password'] ?? '') ?>">
 
-        <button type="submit">Log In (Secure)</button>
+        <button type="submit"><?= t('login_secure_btn') ?></button>
     </form>
 
     <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
         <!-- Show what the prepared statement looks like -->
-        <div class="code-box">Prepared SQL:  SELECT * FROM users WHERE username = ? AND password = ?
-Bound params: [<?= htmlspecialchars(json_encode($username)) ?>, <?= htmlspecialchars(json_encode($password)) ?>]</div>
+        <div class="code-box"><?= t('prepared_sql') ?>  SELECT * FROM users WHERE username = ? AND password = ?
+<?= t('bound_params') ?> [<?= htmlspecialchars(json_encode($username)) ?>, <?= htmlspecialchars(json_encode($password)) ?>]</div>
 
         <div class="result-box">
             <?php if ($error): ?>
-                <p class="error"><strong>Error:</strong> <?= htmlspecialchars($error) ?></p>
+                <p class="error"><strong><?= t('error') ?></strong> <?= htmlspecialchars($error) ?></p>
 
             <?php elseif ($result && count($result) > 0): ?>
-                <h3 class="success">Login Successful &mdash; Legitimate credentials</h3>
+                <h3 class="success"><?= t('login_legit') ?></h3>
                 <table>
-                    <tr><th>ID</th><th>Username</th><th>Role</th></tr>
+                    <tr><th><?= t('id') ?></th><th><?= t('username') ?></th><th><?= t('role') ?></th></tr>
                     <?php foreach ($result as $row): ?>
                         <tr>
                             <td><?= htmlspecialchars($row['id']) ?></td>
@@ -153,10 +151,10 @@ Bound params: [<?= htmlspecialchars(json_encode($username)) ?>, <?= htmlspecialc
                 </table>
 
             <?php else: ?>
-                <h3 class="fail">Login Failed &mdash; Injection attempt blocked</h3>
+                <h3 class="fail"><?= t('login_blocked') ?></h3>
                 <p style="color:#aaa; margin-top:8px; font-size:0.88rem;">
-                    The payload was treated as a literal string value.<br>
-                    No user named <code style="color:#ff8a80;"><?= htmlspecialchars($username) ?></code> exists in the database.
+                    <?= t('payload_literal') ?><br>
+                    <?= t('no_user_named') ?> <code style="color:#ff8a80;"><?= htmlspecialchars($username) ?></code> <?= t('exists_in_db') ?>
                 </p>
             <?php endif; ?>
         </div>

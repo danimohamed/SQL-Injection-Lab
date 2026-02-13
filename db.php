@@ -8,7 +8,7 @@
 define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'sql_injection_lab');
 define('DB_USER', 'root');
-define('DB_PASS', 'danidani2002@');              // Change this to your MySQL root password
+define('DB_PASS', '');              // Change this to your MySQL root password
 
 /**
  * Returns a raw PDO connection used by VULNERABLE pages.

@@ -21,6 +21,8 @@
 // ============================================================
 
 require_once 'db.php';
+require_once 'lang_switcher.php';
+$_SESSION['visited_labs'][] = 'login_vulnerable'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
 
 $result  = null;
 $error   = null;
@@ -50,8 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vulnerable Login - SQL Injection Lab</title>
+    <title><?= t('vuln_login_page') ?></title>
     <style>
+        <?= langSwitcherCSS() ?>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
         .container { max-width: 700px; margin: 0 auto; padding: 40px 20px; }
@@ -82,50 +85,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+<?= langSwitcherHTML() ?>
 <div class="container">
-    <a class="back" href="index.php">&larr; Back to Menu</a>
-    <h1>Vulnerable Login</h1>
-    <span class="tag">Vulnerable</span>
+    <a class="back" href="index.php"><?= t('back_to_menu') ?></a>
+    <h1><?= t('vuln_login_title') ?></h1>
+    <span class="tag"><?= t('vulnerable') ?></span>
 
     <!-- Explanation -->
     <div class="info-box">
-        <strong>How this works:</strong><br>
-        The SQL query uses <strong>string concatenation</strong> to embed user input directly.<br><br>
-        <strong>Try this payload in the username field:</strong><br>
-        <code>admin' -- </code> &nbsp;(password can be anything)<br><br>
-        <strong>What happens:</strong><br>
-        The query becomes:<br>
-        <code>SELECT * FROM users WHERE username='admin' -- ' AND password='...'</code><br>
-        The <code>--</code> comments out the password check, granting access as admin.
+        <?= t('vuln_login_howto') ?>
     </div>
 
     <!-- Login Form -->
     <form method="POST">
-        <label for="username">Username</label>
+        <label for="username"><?= t('username') ?></label>
         <input type="text" id="username" name="username" placeholder="e.g. admin' -- " value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
 
-        <label for="password">Password</label>
+        <label for="password"><?= t('password') ?></label>
         <input type="text" id="password" name="password" placeholder="anything" value="<?= htmlspecialchars($_POST['password'] ?? '') ?>">
 
-        <button type="submit">Log In</button>
+        <button type="submit"><?= t('login_btn') ?></button>
     </form>
 
     <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
         <!-- Show the executed query -->
         <div class="query-box">
-            <span>Executed SQL:</span><br>
+            <span><?= t('executed_sql') ?></span><br>
             <?= htmlspecialchars($query) ?>
         </div>
 
         <!-- Show result -->
         <div class="result-box">
             <?php if ($error): ?>
-                <p class="error"><strong>SQL Error:</strong> <?= htmlspecialchars($error) ?></p>
+                <p class="error"><strong><?= t('sql_error') ?></strong> <?= htmlspecialchars($error) ?></p>
 
             <?php elseif ($result && count($result) > 0): ?>
-                <h3 class="success">Login Successful &mdash; <?= count($result) ?> row(s) returned</h3>
+                <h3 class="success"><?= t('login_success') ?> &mdash; <?= count($result) ?> <?= t('rows_returned') ?></h3>
                 <table>
-                    <tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th></tr>
+                    <tr><th><?= t('id') ?></th><th><?= t('username') ?></th><th><?= t('password') ?></th><th><?= t('role') ?></th></tr>
                     <?php foreach ($result as $row): ?>
                         <tr>
                             <td><?= htmlspecialchars($row['id']) ?></td>
@@ -137,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </table>
 
             <?php else: ?>
-                <h3 class="fail">Login Failed &mdash; 0 rows returned</h3>
+                <h3 class="fail"><?= t('login_failed') ?></h3>
             <?php endif; ?>
         </div>
     <?php endif; ?>

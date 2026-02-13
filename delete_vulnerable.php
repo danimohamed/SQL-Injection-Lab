@@ -23,6 +23,8 @@
 // ============================================================
 
 require_once 'db.php';
+require_once 'lang_switcher.php';
+$_SESSION['visited_labs'][] = 'delete_vulnerable'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
 
 $message = null;
 $error   = null;
@@ -32,7 +34,7 @@ $users   = [];
 // Handle reset
 if (isset($_POST['reset'])) {
     resetUsersTable();
-    $message = 'Database has been reset to its original state.';
+    $message = t('db_reset_msg');
 }
 
 // Handle delete
@@ -47,7 +49,7 @@ if (isset($_POST['delete'])) {
     try {
         $pdo   = getDB();
         $count = $pdo->exec($query);
-        $message = "DELETE executed. $count row(s) affected.";
+        $message = t('delete_executed') . " $count " . t('rows_affected');
     } catch (PDOException $e) {
         $error = $e->getMessage();
     }
@@ -67,8 +69,9 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delete Injection - SQL Injection Lab</title>
+    <title><?= t('delete_page') ?></title>
     <style>
+        <?= langSwitcherCSS() ?>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
         .container { max-width: 750px; margin: 0 auto; padding: 40px 20px; }
@@ -104,32 +107,32 @@ try {
     </style>
 </head>
 <body>
+<?= langSwitcherHTML() ?>
 <div class="container">
-    <a class="back" href="index.php">&larr; Back to Menu</a>
-    <h1>Delete Injection</h1>
-    <span class="tag">Vulnerable</span>
+    <a class="back" href="index.php"><?= t('back_to_menu') ?></a>
+    <h1><?= t('delete_title') ?></h1>
+    <span class="tag"><?= t('vulnerable') ?></span>
 
     <!-- Explanation -->
     <div class="info-box">
-        <strong>Scenario:</strong> A "Delete Account" form. The DELETE query concatenates user input.<br><br>
-        <strong>Normal use:</strong> Enter a username like <code>user2</code> to delete one account.<br><br>
-        <strong>Malicious payload:</strong>
+        <?= t('delete_scenario') ?><br><br>
+        <?= t('delete_normal') ?><br><br>
+        <?= t('delete_malicious') ?>
         <code>' OR '1'='1</code>
-        <strong>What happens:</strong><br>
-        The query becomes:<br>
+        <?= t('delete_result') ?>
         <code>DELETE FROM users WHERE username='' OR '1'='1'</code>
-        Since <code>'1'='1'</code> is always true, <strong>all rows are deleted</strong>.<br><br>
-        Use the <strong>Reset Database</strong> button to restore the data after testing.
+        <?= t('delete_all_rows') ?><br><br>
+        <?= t('delete_restore') ?>
     </div>
 
     <!-- Form -->
     <form method="POST">
-        <label for="username">Username to Delete</label>
+        <label for="username"><?= t('username_to_delete') ?></label>
         <input type="text" id="username" name="username" placeholder="e.g. user2  or  ' OR '1'='1" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
 
         <div class="btn-row">
-            <button type="submit" name="delete" value="1">Delete User</button>
-            <button type="submit" name="reset" value="1">Reset Database</button>
+            <button type="submit" name="delete" value="1"><?= t('delete_user_btn') ?></button>
+            <button type="submit" name="reset" value="1"><?= t('reset_database') ?></button>
         </div>
     </form>
 
@@ -138,22 +141,22 @@ try {
     <?php endif; ?>
 
     <?php if ($error): ?>
-        <div class="msg err"><strong>SQL Error:</strong> <?= htmlspecialchars($error) ?></div>
+        <div class="msg err"><strong><?= t('sql_error') ?></strong> <?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
     <?php if ($query): ?>
         <div class="query-box">
-            <span>Executed SQL:</span><br>
+            <span><?= t('executed_sql') ?></span><br>
             <?= htmlspecialchars($query) ?>
         </div>
     <?php endif; ?>
 
     <!-- Current Table State -->
     <div class="result-box">
-        <h3>Current Users Table</h3>
+        <h3><?= t('current_users') ?></h3>
         <?php if (count($users) > 0): ?>
             <table>
-                <tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th></tr>
+                <tr><th><?= t('id') ?></th><th><?= t('username') ?></th><th><?= t('password') ?></th><th><?= t('role') ?></th></tr>
                 <?php foreach ($users as $row): ?>
                     <tr>
                         <td><?= htmlspecialchars($row['id']) ?></td>
@@ -164,7 +167,7 @@ try {
                 <?php endforeach; ?>
             </table>
         <?php else: ?>
-            <p class="empty">Table is empty! All rows were deleted. Click "Reset Database" to restore.</p>
+            <p class="empty"><?= t('table_empty') ?></p>
         <?php endif; ?>
     </div>
 </div>

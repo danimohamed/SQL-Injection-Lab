@@ -23,6 +23,8 @@
 // ============================================================
 
 require_once 'db.php';
+require_once 'lang_switcher.php';
+$_SESSION['visited_labs'][] = 'update_vulnerable'; $_SESSION['visited_labs'] = array_unique($_SESSION['visited_labs']);
 
 $message = null;
 $error   = null;
@@ -32,7 +34,7 @@ $users   = [];
 // Handle reset request
 if (isset($_POST['reset'])) {
     resetUsersTable();
-    $message = 'Database has been reset to its original state.';
+    $message = t('db_reset_msg');
 }
 
 // Handle update request
@@ -49,7 +51,7 @@ if (isset($_POST['update'])) {
         $pdo  = getDB();
         $stmt = $pdo->query($query);
         $count = $stmt->rowCount();
-        $message = "Update executed successfully. $count row(s) affected.";
+        $message = t('update_success') . " $count " . t('rows_affected');
     } catch (PDOException $e) {
         $error = $e->getMessage();
     }
@@ -68,8 +70,9 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Injection - SQL Injection Lab</title>
+    <title><?= t('update_page') ?></title>
     <style>
+        <?= langSwitcherCSS() ?>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
         .container { max-width: 750px; margin: 0 auto; padding: 40px 20px; }
@@ -105,34 +108,34 @@ try {
     </style>
 </head>
 <body>
+<?= langSwitcherHTML() ?>
 <div class="container">
-    <a class="back" href="index.php">&larr; Back to Menu</a>
-    <h1>Privilege Escalation (UPDATE Injection)</h1>
-    <span class="tag">Vulnerable</span>
+    <a class="back" href="index.php"><?= t('back_to_menu') ?></a>
+    <h1><?= t('update_title') ?></h1>
+    <span class="tag"><?= t('vulnerable') ?></span>
 
     <!-- Explanation -->
     <div class="info-box">
-        <strong>Scenario:</strong> A "Change Password" form. The UPDATE query concatenates user input.<br><br>
-        <strong>Step 1:</strong> Type <strong>user1</strong> in the Username field.<br>
-        <strong>Step 2:</strong> Paste this into "New Password":
+        <?= t('update_scenario') ?><br><br>
+        <?= t('update_step1') ?><br>
+        <?= t('update_step2') ?>
         <code>hacked', role='admin</code>
-        <strong>What happens:</strong><br>
-        The query becomes:<br>
+        <?= t('update_result') ?>
         <code>UPDATE users SET password='hacked', role='admin' WHERE username='user1'</code>
-        user1's role changes from "user" to "admin" &mdash; privilege escalation.
+        <?= t('update_escalation') ?>
     </div>
 
     <!-- Form -->
     <form method="POST">
-        <label for="username">Username (target)</label>
+        <label for="username"><?= t('username_target') ?></label>
         <input type="text" id="username" name="username" placeholder="e.g. user1" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
 
-        <label for="new_password">New Password</label>
+        <label for="new_password"><?= t('new_password') ?></label>
         <input type="text" id="new_password" name="new_password" placeholder="e.g. hacked', role='admin" value="<?= htmlspecialchars($_POST['new_password'] ?? '') ?>">
 
         <div class="btn-row">
-            <button type="submit" name="update" value="1">Update Password</button>
-            <button type="submit" name="reset" value="1">Reset Database</button>
+            <button type="submit" name="update" value="1"><?= t('update_password_btn') ?></button>
+            <button type="submit" name="reset" value="1"><?= t('reset_database') ?></button>
         </div>
     </form>
 
@@ -141,21 +144,21 @@ try {
     <?php endif; ?>
 
     <?php if ($error): ?>
-        <div class="msg err"><strong>SQL Error:</strong> <?= htmlspecialchars($error) ?></div>
+        <div class="msg err"><strong><?= t('sql_error') ?></strong> <?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
     <?php if ($query): ?>
         <div class="query-box">
-            <span>Executed SQL:</span><br>
+            <span><?= t('executed_sql') ?></span><br>
             <?= htmlspecialchars($query) ?>
         </div>
     <?php endif; ?>
 
     <!-- Current Table State -->
     <div class="result-box">
-        <h3>Current Users Table</h3>
+        <h3><?= t('current_users') ?></h3>
         <table>
-            <tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th></tr>
+            <tr><th><?= t('id') ?></th><th><?= t('username') ?></th><th><?= t('password') ?></th><th><?= t('role') ?></th></tr>
             <?php foreach ($users as $row): ?>
                 <tr class="<?= ($row['role'] === 'admin' && $row['username'] !== 'admin') ? 'highlight' : '' ?>">
                     <td><?= htmlspecialchars($row['id']) ?></td>

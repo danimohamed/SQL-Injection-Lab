@@ -1,14 +1,7 @@
 -- ============================================================
--- SQL INJECTION LAB - Database Setup Script
--- FOR EDUCATIONAL PURPOSES ONLY - Run on localhost only
+-- SQL INJECTION LAB - Table Setup Script
+-- FOR EDUCATIONAL PURPOSES ONLY
 -- ============================================================
-
--- Create the database
-CREATE DATABASE IF NOT EXISTS sql_injection_lab
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE sql_injection_lab;
 
 -- Drop table if it exists (for clean re-runs)
 DROP TABLE IF EXISTS users;
@@ -22,12 +15,11 @@ CREATE TABLE users (
 ) ENGINE=InnoDB;
 
 -- Insert test users
--- NOTE: Passwords are stored in plaintext intentionally to demonstrate
--- another common vulnerability. In production, ALWAYS hash passwords.
+-- NOTE: Passwords stored in plaintext intentionally (for lab only)
 INSERT INTO users (username, password, role) VALUES
     ('admin',  'admin123',    'admin'),
     ('user1',  'password1',   'user'),
     ('user2',  'letmein',     'user');
 
--- Verify the data
+-- Verify data
 SELECT * FROM users;
